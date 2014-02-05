@@ -13,16 +13,30 @@ statementlist :: CharParser st AST
 statementlist = statement
 
 xblock = block
+
 block = do
           symbol "{"
           list <- statementlist
           symbol "}"
           return list
 
-ifStmt = symbol "if" >> xblock
--- TODO else, elsif
+ifStmt :: CharParser st AST
+ifStmt = do
+	    symbol "if" 
+	    cond <- expr
+	    then' <- xblock
+	    symbol "else" 
+	    else' <- xblock
+	    return $ If cond then' else'
 
-whileStmt = symbol "while" >> xblock
+-- TODO missing else, elsif
+
+whileStmt :: CharParser st AST
+whileStmt = do
+             symbol "while"
+             cond <- expr
+             body <- xblock
+             return $ While cond body
 
 expr = number
 number = integer
