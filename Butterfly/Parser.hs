@@ -1,11 +1,11 @@
-module Butterfly.Parser where
+module Butterfly.Parser (statementlist) where
 import Butterfly.AST
 import Text.ParserCombinators.Parsec
 
 symbol s = lexeme (string s)
 lexeme p = do { x <- p; spaces; return x }
 
-statement = statement <|> statementControl <|> expr
+statement = statementControl <|> expr
 
 statementControl = ifStmt <|> whileStmt
 
