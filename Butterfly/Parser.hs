@@ -5,7 +5,9 @@ import Text.ParserCombinators.Parsec
 symbol s = lexeme (string s)
 lexeme p = do { x <- p; spaces; return x }
 
-statement = statementControl <|> expr
+say = symbol "say" >> expr >>= return . Say
+
+statement = statementControl <|> say <|> expr
 
 statementControl = ifStmt <|> whileStmt
 
