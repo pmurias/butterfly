@@ -2,3 +2,5 @@ Parser.hi
 Parser.o
 AST.hi
 AST.o
+Run.hi
+Run.o
