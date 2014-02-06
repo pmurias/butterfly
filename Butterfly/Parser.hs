@@ -6,13 +6,18 @@ symbol s = lexeme (string s)
 lexeme p = do { x <- p; spaces; return x }
 
 say = symbol "say" >> expr >>= return . Say
+take = symbol "take" >> expr >>= return . Take
 
-statement = statementControl <|> say <|> expr
+gather = symbol "gather" >> blast >>= return . Gather
+
+statement = statementControl <|> say <|> Butterfly.Parser.take <|> expr <|> gather 
 
 statementControl = ifStmt <|> whileStmt
 
 statementlist :: CharParser st AST
-statementlist = sepEndBy statement (symbol ";") >>= return . foldl1 Seq
+statementlist = sepEndBy1 statement (symbol ";") >>= return . foldl1 Seq
+
+blast = block <|> statement
 
 xblock = block
 

@@ -9,5 +9,5 @@ main = do
 		Left err -> print err
 		Right ast -> do
 			print ast
-		       	runD $ eval ast emptyHeap (\val heap -> Term val)
+		       	runD $ eval ast emptyHeap (\heap val -> Term val)
 	   
