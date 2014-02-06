@@ -22,6 +22,7 @@ eval :: AST -> Heap -> Cont -> D
 eval (IntConstant i) heap next = next (Integer i) heap
 eval (If cond then' else') heap next = 
     eval cond heap (\condVal heap' -> if (isTrue condVal) then eval then' heap' next else eval else' heap' next)
+eval (Seq a b) heap next = eval a heap (\_ heap' -> eval b heap next)
 
 
 

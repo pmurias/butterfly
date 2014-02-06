@@ -10,7 +10,7 @@ statement = statementControl <|> expr
 statementControl = ifStmt <|> whileStmt
 
 statementlist :: CharParser st AST
-statementlist = statement
+statementlist = sepEndBy statement (symbol ";") >>= return . foldl1 Seq
 
 xblock = block
 

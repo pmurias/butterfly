@@ -7,5 +7,7 @@ main = do
           parsed <- parseFromFile statementlist input
 	  case parsed of
 		Left err -> print err
-		Right ast -> runD $ eval ast emptyHeap (\val heap -> Term val)
+		Right ast -> do
+			print ast
+		       	runD $ eval ast emptyHeap (\val heap -> Term val)
 	   
