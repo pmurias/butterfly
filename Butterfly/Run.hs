@@ -26,5 +26,7 @@ eval (If cond then' else') heap next =
 eval (Seq a b) heap next = eval a heap (\_ heap' -> eval b heap next)
 eval (Say arg) heap next = eval arg heap (\val heap' -> Output val (next Nil heap'))
 
+eval while@(While cond body) heap next = eval cond heap (\val heap'-> if isTrue val then (eval body heap' (\_ heap'' -> eval while heap'' next)) else next Nil heap)
+
 
 

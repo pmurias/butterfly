@@ -1,1 +1,3 @@
-while 1 {2}
+while 1 {
+  say 3
+}
