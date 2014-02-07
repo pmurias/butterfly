@@ -1,3 +1,3 @@
 module Butterfly.AST (AST(..)) where
-data AST = IntConstant Integer | If AST AST AST | While AST AST | Seq AST AST | Say AST | Gather AST | Take AST
+data AST = IntConstant Integer | If AST AST AST | While AST AST | Seq AST AST | Say AST | Gather AST | Take AST | Eager AST
 	deriving (Show)

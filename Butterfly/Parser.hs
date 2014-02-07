@@ -7,10 +7,11 @@ lexeme p = do { x <- p; spaces; return x }
 
 say = symbol "say" >> expr >>= return . Say
 take = symbol "take" >> expr >>= return . Take
+eager = symbol "eager" >> expr >>= return . Eager
 
 gather = symbol "gather" >> blast >>= return . Gather
 
-statement = statementControl <|> say <|> Butterfly.Parser.take <|> expr <|> gather 
+statement = statementControl <|> say <|> expr 
 
 statementControl = ifStmt <|> whileStmt
 
@@ -45,7 +46,8 @@ whileStmt = do
              body <- xblock
              return $ While cond body
 
-expr = number
+expr :: CharParser st AST
+expr = Butterfly.Parser.take <|> gather <|> eager <|> number
 number = integer
 integer = decint
 

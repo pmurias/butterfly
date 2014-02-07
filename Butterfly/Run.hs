@@ -14,10 +14,26 @@ newPartial (Heap partials) = M.size partials
 adjustPartial :: Heap -> Int -> (PartialList -> PartialList) -> Heap
 adjustPartial (Heap partials) cell transform = Heap $ M.adjust transform cell partials
 
-data D = Term Val | Output Val D
+getPartial :: Heap -> Int -> PartialList
+getPartial (Heap partials) cell = M.findWithDefault (error "missing list cell") cell partials
+
+data D = Term Heap Val | Output Heap Val D
 
 data Val = Integer Integer | Nil | LazyListRef Int
-   deriving (Show,Eq)
+    deriving (Show,Eq)
+
+instance PrettyPrint Val where
+    pretty heap (Integer i) = show i
+    pretty heap (Nil) = "Nil"
+    pretty heap (LazyListRef ref) = "["++(pretty heap (getPartial heap ref))++"]"
+
+instance PrettyPrint PartialList where
+	pretty heap EndOfList = ""
+	pretty heap (RestOfList _) = "..."
+	pretty heap (Cons val rest) = (pretty heap val)++","++(pretty heap rest)
+
+class PrettyPrint a where 
+     pretty :: Heap -> a -> String
 
 type Cont = (Heap -> Val -> D)
 
@@ -32,8 +48,9 @@ getElement heap (RestOfList listCont) i next = listCont heap i next
 
 emptyHeap = Heap (M.empty)
 
-runD (Term val) = print val
-runD (Output val rest) = print val >> runD rest
+
+runD (Term heap val) = return ()
+runD (Output heap val rest) = putStrLn (pretty heap val) >> runD rest
 
 
 isTrue :: Val -> Bool
@@ -46,13 +63,41 @@ filledList :: PartialList -> PartialList
 filledList (Cons val rest) = Cons val (filledList rest)
 filledList (RestOfList _) = EndOfList
 
+eager :: Heap -> Val -> Cont -> D
+
+eager heap val@(LazyListRef ref) next = eager' heap val 0 (getPartial heap ref) next
+  
+eager' :: Heap -> Val -> Int -> PartialList -> Cont -> D
+
+eager' heap val i (Cons _ rest) next = eager' heap val (i+i) rest next
+eager' heap val _ EndOfList next = next heap val
+eager' heap val i (RestOfList listCont) next = listCont heap i (\heap' _ -> eager heap' val next)
+
+
+{-
+eager heap val@(LazyListRef ref) next =
+
+	let list = findPartial heap ref in eager list
+
+            heap' = eager' heap 0 list
+            in next heap' val
+	
+
+---	RestOfList (Heap -> Int -> Cont -> D)
+eager heap (Cons val rest) i next = getElement heap rest (i-1) next
+getElement heap EndOfList _ next = next heap Nil
+--getElement heap (RestOfList listCont) i next = listCont heap i next
+-}
+
+
+
 eval :: AST -> Heap -> Cont -> D
 
 eval (IntConstant i) heap next = next heap (Integer i) 
 eval (If cond then' else') heap next = 
     eval cond heap (\heap' condVal  -> if (isTrue condVal) then eval then' heap' next else eval else' heap' next)
 eval (Seq a b) heap next = eval a heap (\heap' _ -> eval b heap next)
-eval (Say arg) heap next = eval arg heap (\heap' val -> Output val (next heap' Nil))
+eval (Say arg) heap next = eval arg heap (\heap' val -> Output heap' val (next heap' Nil))
 
 eval while@(While cond body) heap next = eval cond heap (\heap' val -> if isTrue val then (eval body heap' (\heap'' _ -> eval while heap'' next)) else next heap Nil)
 
@@ -61,5 +106,6 @@ eval (Gather body) heap next =
             heap' = insertPartial heap newCell (RestOfList (\heap i result -> eval body heap (endOfList newCell result))) in
 	next heap' (LazyListRef newCell)
 
+eval (Eager arg) heap next = eval arg heap (\heap' val -> eager heap' val next)
 
 
