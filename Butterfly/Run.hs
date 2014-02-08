@@ -1,4 +1,4 @@
-module Butterfly.Run (eval, emptyHeap, runD, D(..), GatherID(..)) where
+module Butterfly.Run (eval, emptyHeap, runD, D(..) ) where
 import Butterfly.AST
 import Data.Map as M
 
@@ -37,8 +37,7 @@ class PrettyPrint a where
 
 type Cont = (Heap -> Val -> D)
 
-type ProduceMoreElements = (Heap -> Cont -> D)
-data PartialList = Cons Val PartialList | EndOfList | RestOfList ProduceMoreElements
+data PartialList = Cons Val PartialList | EndOfList | RestOfList (Heap -> (Heap -> D) -> D)
 
 emptyHeap = Heap (M.empty)
 
@@ -65,28 +64,16 @@ eager' :: Heap -> Val -> PartialList -> Cont -> D
 
 eager' heap val (Cons _ rest) next = eager' heap val rest next
 eager' heap val EndOfList next = next heap val
-eager' heap val (RestOfList listCont) next = listCont heap (\heap' _ -> eager heap' val next)
+eager' heap val (RestOfList computeRest) next = computeRest heap (\heap' -> eager heap' val next)
 
+-- RestOfList (Heap -> (Heap -> D) -> D)
 
-{-
-eager heap val@(LazyListRef ref) next =
+pushOnList :: Int -> (Heap -> D) -> Heap -> Val -> Cont -> D
+pushOnList cell result heap val getMore = result (error "...")
 
-	let list = findPartial heap ref in eager list
+type GatherCont = Heap -> Val -> Cont -> D
 
-            heap' = eager' heap 0 list
-            in next heap' val
-	
-
----	RestOfList (Heap -> Int -> Cont -> D)
-eager heap (Cons val rest) i next = getElement heap rest (i-1) next
-getElement heap EndOfList _ next = next heap Nil
---getElement heap (RestOfList listCont) i next = listCont heap i next
--}
-
-
-data GatherID = None
-
-eval :: AST -> Heap -> GatherID -> Cont -> D
+eval :: AST -> Heap -> GatherCont -> Cont -> D
 
 eval (IntConstant i) heap gather next = next heap (Integer i) 
 eval (If cond then' else') heap gather next = 
@@ -98,10 +85,10 @@ eval while@(While cond body) heap gather next = eval cond heap gather (\heap' va
 
 eval (Gather body) heap gather next = 
 	let newCell = newPartial heap
-            heap' = insertPartial heap newCell (RestOfList (\heap result -> eval body heap None (endOfList newCell result))) in next heap' (LazyListRef newCell)
+            heap' = insertPartial heap newCell (RestOfList (\heap result -> eval body heap (pushOnList newCell result) (endOfList newCell (\heap val -> result heap)))) in next heap' (LazyListRef newCell)
 
 eval (Eager arg) heap gather next = eval arg heap gather (\heap' val -> eager heap' val next)
 --eval (Take arg) heap gather next = eval arg heap gather (\heap' val -> gather heap' val next)
-eval (Take arg) heap gather next = next heap Nil
+eval (Take arg) heap gather next = gather heap (Integer 1) next
 
 
