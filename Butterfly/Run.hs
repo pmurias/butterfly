@@ -66,10 +66,6 @@
 	eager' heap val EndOfList gatherCont next = next heap gatherCont val
 	eager' heap val (RestOfList computeRest) gatherCont next = computeRest heap (\heap' -> eager heap' val gatherCont next)
 
-	-- RestOfList (Heap -> (Heap -> D) -> D)
-
-	--pushOnList :: Int -> (Heap -> D) -> Heap -> Val -> Cont -> D
-	--pushOnList cell result heap val getMore = result (error "...")
 
 	type GatherCont = (Heap -> D)
 
@@ -83,7 +79,7 @@
 
 	eval :: AST -> Heap -> GatherCont -> Cont -> D
 	eval (IntConstant i) heap gatherCont next = next heap gatherCont (Integer i) 
-	eval (Take arg) heap gatherCont next = gatherCont (extendList heap 0 next (Integer 1))
+	eval (Take arg) heap gatherCont next = eval arg heap gatherCont (\heap' gatherCont' val -> gatherCont' (extendList heap 0 next val))
 	eval (Gather body) heap gatherCont next = 
 		let newCell = 0
 		    heap' = insertPartial heap newCell (RestOfList (\heap result -> eval body heap result (endOfList newCell (\heap' gatherCont' val -> result heap')))) in next heap' gatherCont (LazyListRef newCell)
@@ -98,16 +94,3 @@
 	    eval cond heap gatherCont (\heap' gatherCont' condVal  -> if (isTrue condVal) then eval then' heap' gatherCont' next else eval else' heap' gatherCont' next)
 
 	eval while@(While cond body) heap gatherCont next = eval cond heap gatherCont (\heap' gatherCont' val -> if isTrue val then (eval body heap' gatherCont' (\heap'' gatherCont'' _ -> eval while heap'' gatherCont'' next)) else next heap gatherCont' Nil)
-
-	{-
-
-
-	eval (Gather body) heap gather next = 
-		let newCell = newPartial heap
-		    heap' = insertPartial heap newCell (RestOfList (\heap result -> eval body heap (pushOnList newCell result) (endOfList newCell (\heap val -> result heap)))) in next heap' (LazyListRef newCell)
-
-
-	--eval (Take arg) heap gather next = eval arg heap gather (\heap' val -> gather heap' val next)
-	-}
-
-
