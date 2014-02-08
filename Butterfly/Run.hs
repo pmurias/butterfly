@@ -12,8 +12,7 @@
 	newPartial (Heap partials) = M.size partials
 
 	adjustPartial :: Heap -> Int -> (PartialList -> PartialList) -> Heap
-	adjustPartial (Heap partials) cell transform = Heap $ M.adjust transform cell partials
-
+	adjustPartial (Heap partials) cell transform = Heap $ M.adjust transform cell partials 
 	getPartial :: Heap -> Int -> PartialList
 	getPartial (Heap partials) cell = M.findWithDefault (error "missing list cell") cell partials
 
@@ -66,6 +65,14 @@
 	eager' heap val EndOfList gatherCont next = next heap gatherCont val
 	eager' heap val (RestOfList computeRest) gatherCont next = computeRest heap (\heap' -> eager heap' val gatherCont next)
 
+	at :: Heap -> GatherCont -> Val -> Val -> Cont -> D
+	at heap gatherCont array@(LazyListRef cell) index@(Integer int) next = traverse int (getPartial heap cell) where	
+		traverse 0 (Cons val rest) = next heap gatherCont val
+		traverse i (Cons val rest) = traverse (i-1) rest
+		traverse i EndOfList = next heap gatherCont Nil
+		traverse i (RestOfList getMore) = getMore heap (\heap' -> at heap' gatherCont array index next)
+	
+
 
 	type GatherCont = (Heap -> D)
 
@@ -94,3 +101,6 @@
 	    eval cond heap gatherCont (\heap' gatherCont' condVal  -> if (isTrue condVal) then eval then' heap' gatherCont' next else eval else' heap' gatherCont' next)
 
 	eval while@(While cond body) heap gatherCont next = eval cond heap gatherCont (\heap' gatherCont' val -> if isTrue val then (eval body heap' gatherCont' (\heap'' gatherCont'' _ -> eval while heap'' gatherCont'' next)) else next heap gatherCont' Nil)
+
+	eval (At array index) heap gatherCont next = eval array heap gatherCont (\heap' gatherCont' array' -> eval index heap' gatherCont' (\heap'' gatherCont'' index' -> at heap'' gatherCont'' array' index' next))
+

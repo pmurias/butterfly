@@ -46,8 +46,23 @@ whileStmt = do
              body <- xblock
              return $ While cond body
 
+at :: AST -> CharParser st AST
+at array = do
+            symbol "["
+            index <- expr
+            symbol "]"
+	    return $ At array index
+
+parens p = do {symbol "("; x <- p; symbol ")";return x}
+
 expr :: CharParser st AST
-expr = Butterfly.Parser.take <|> gather <|> eager <|> number
+expr = do
+	array <- term
+	option array (at array)
+
+term :: CharParser st AST
+term = Butterfly.Parser.take <|> gather <|> eager <|> number <|> (parens expr)
+
 number = integer
 integer = decint
 
