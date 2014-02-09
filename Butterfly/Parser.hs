@@ -5,13 +5,28 @@ import Text.ParserCombinators.Parsec
 symbol s = lexeme (string s)
 lexeme p = do { x <- p; spaces; return x }
 
+varname = lexeme $ do
+    string "$"
+    id <- many1 alphaNum 
+    return id
+
+var = varname >>= return . Var
+
+assign = do
+    lvalue <- var
+    symbol "="
+    rvalue <- expr
+    return $ Assign lvalue rvalue
+
+decl = symbol "my" >> varname >>= return . Decl
+
 say = symbol "say" >> expr >>= return . Say
 take = symbol "take" >> expr >>= return . Take
 eager = symbol "eager" >> expr >>= return . Eager
 
 gather = symbol "gather" >> blast >>= return . Gather
 
-statement = statementControl <|> say <|> expr 
+statement = statementControl <|> say <|> expr <|> decl
 
 statementControl = ifStmt <|> whileStmt
 
@@ -61,7 +76,7 @@ expr = do
 	option array (at array)
 
 term :: CharParser st AST
-term = Butterfly.Parser.take <|> gather <|> eager <|> number <|> (parens expr)
+term = Butterfly.Parser.take <|> gather <|> eager <|> number <|> (parens expr) <|> (try assign) <|> var
 
 number = integer
 integer = decint
