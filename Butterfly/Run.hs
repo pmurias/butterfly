@@ -2,19 +2,20 @@ module Butterfly.Run (eval, emptyHeap, runD, D(..), Val(..) ) where
 import Butterfly.AST
 import Data.Map as M
 
-data Heap = Heap (M.Map Int PartialList)
+data Heap = Heap (M.Map Int PartialList) (M.Map Int Val)
+type Env = M.Map String Int
 
 insertPartial :: Heap -> Int -> PartialList -> Heap
 
-insertPartial (Heap partials) cell partial = Heap $ M.insert cell partial partials
+insertPartial (Heap partials vals) cell partial = Heap (M.insert cell partial partials) vals
 
 newPartial :: Heap -> Int
-newPartial (Heap partials) = M.size partials
+newPartial (Heap partials vals) = M.size partials
 
 adjustPartial :: Heap -> Int -> (PartialList -> PartialList) -> Heap
-adjustPartial (Heap partials) cell transform = Heap $ M.adjust transform cell partials 
+adjustPartial (Heap partials vals) cell transform = Heap (M.adjust transform cell partials) vals
 getPartial :: Heap -> Int -> PartialList
-getPartial (Heap partials) cell = M.findWithDefault (error "missing list cell") cell partials
+getPartial (Heap partials vals) cell = M.findWithDefault (error "missing list cell") cell partials
 
 data D = Term Heap Val | Output Heap Val D
 
@@ -38,7 +39,7 @@ type Cont = (Heap -> (Heap -> D) -> Val -> D)
 
 data PartialList = Cons Val PartialList | EndOfList | RestOfList (Heap -> (Heap -> D) -> D)
 
-emptyHeap = Heap (M.empty)
+emptyHeap = Heap M.empty M.empty
 
 
 runD (Term heap val) = return ()
