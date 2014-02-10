@@ -105,3 +105,5 @@ eval while@(While cond body) heap gatherCont next = eval cond heap gatherCont (\
 
 eval (At array index) heap gatherCont next = eval array heap gatherCont (\heap' gatherCont' array' -> eval index heap' gatherCont' (\heap'' gatherCont'' index' -> at heap'' gatherCont'' array' index' next))
 
+eval (Block decls stmts) heap gatherCont next = eval stmts heap gatherCont next
+

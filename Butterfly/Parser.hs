@@ -6,9 +6,9 @@ symbol s = lexeme (string s)
 lexeme p = do { x <- p; spaces; return x }
 
 varname = lexeme $ do
-    string "$"
+    sigil <- string "$"
     id <- many1 alphaNum 
-    return id
+    return $ sigil++id
 
 var = varname >>= return . Var
 
@@ -18,7 +18,6 @@ assign = do
     rvalue <- expr
     return $ Assign lvalue rvalue
 
-decl = symbol "my" >> varname >>= return . Decl
 
 say = symbol "say" >> expr >>= return . Say
 take = symbol "take" >> expr >>= return . Take
@@ -26,7 +25,7 @@ eager = symbol "eager" >> expr >>= return . Eager
 
 gather = symbol "gather" >> blast >>= return . Gather
 
-statement = statementControl <|> say <|> expr <|> decl
+statement = statementControl <|> say <|> expr <|> block
 
 statementControl = ifStmt <|> whileStmt
 
@@ -36,12 +35,20 @@ statementlist = sepEndBy1 statement (symbol ";") >>= return . foldl1 Seq
 blast = block <|> statement
 
 xblock = block
-
+ 
+decls :: CharParser st [String]
+decls = do
+          symbol "my"
+	  varnames <- sepEndBy1 varname (symbol ",")
+	  symbol ";"
+	  return varnames
+	  
 block = do
           symbol "{"
+	  varnames <- option [] decls
           list <- statementlist
           symbol "}"
-          return list
+          return $ Block varnames list
 
 ifStmt :: CharParser st AST
 ifStmt = do
