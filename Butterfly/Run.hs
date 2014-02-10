@@ -17,6 +17,16 @@ adjustPartial (Heap partials vals) cell transform = Heap (M.adjust transform cel
 getPartial :: Heap -> Int -> PartialList
 getPartial (Heap partials vals) cell = M.findWithDefault (error "missing list cell") cell partials
 
+getVarCell :: Env -> String -> Cell
+getVarCell env name = M.findWithDefault (error "missing var cell mapping") name env
+
+
+getVar :: Env -> Heap -> String -> Val
+getVar env (Heap partials vals) name = M.findWithDefault (error "var cell pointing to nothing") (getVarCell env name) vals
+
+setVar :: Env -> Heap -> String -> Val -> Heap
+setVar env (Heap partials vals) name val = Heap partials (M.insert (getVarCell env name) val vals)
+
 data D = Term Heap Val | Output Heap Val D
 
 data Val = Integer Integer | Nil | LazyListRef Int
@@ -88,6 +98,18 @@ extendList heap cell produceMore newVal =  adjustPartial heap cell traverse
 	where traverse (Cons val rest) = Cons val (traverse rest)
 	      traverse (RestOfList _) = Cons newVal (RestOfList (\heap consume -> produceMore heap consume Nil)) 
 
+declareVars :: Env -> Heap -> [String] -> (Env,Heap)
+declareVars env (Heap partials vals) decls = let (env',vals') = declareVars' env vals decls in (env',Heap partials vals')
+
+type VarHeap  = M.Map Int Val
+declareVars' :: Env -> VarHeap -> [String] -> (Env,VarHeap)
+declareVars' env heap [] = (env,heap)
+declareVars' env heap (var:rest) = 
+	let (env',heap') = declareVars' env heap rest
+	    newCell = M.size heap'
+	    in (M.insert var newCell env',M.insert newCell Nil heap')
+
+
 eval :: AST -> Env -> Heap -> GatherCont -> Cont -> D
 
 eval (IntConstant i) env heap gatherCont next = next heap gatherCont (Integer i) 
@@ -109,5 +131,8 @@ eval while@(While cond body) env heap gatherCont next = eval cond env heap gathe
 
 eval (At array index) env heap gatherCont next = eval array env heap gatherCont (\heap' gatherCont' array' -> eval index env heap' gatherCont' (\heap'' gatherCont'' index' -> at heap'' gatherCont'' array' index' next))
 
-eval (Block decls stmts) env heap gatherCont next = eval stmts env heap gatherCont next
+eval (Block decls stmts) env heap gatherCont next = let (env',heap') = declareVars env heap decls in
+	eval stmts env' heap' gatherCont next
+eval (Assign (Var name) rvalue) env heap gatherCont next = eval rvalue env heap gatherCont (\heap' gatherCont' val -> next (setVar env heap' name val) gatherCont' Nil)
+eval (Var name) env heap gatherCont next = next heap gatherCont (getVar env heap name)
 
