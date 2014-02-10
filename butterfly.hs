@@ -9,6 +9,6 @@ main = do
 		Left err -> print err
 		Right ast -> do
 			print ast
-		       	runD $ eval ast emptyHeap (\heap -> Term heap (Integer 666)) (\heap gatherCont val -> Term heap val)
+		       	runD $ eval ast emptyEnv emptyHeap (\heap -> Term heap (Integer 666)) (\heap gatherCont val -> Term heap val)
 
 	   
